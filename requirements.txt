@@ -1,1 +1,7 @@
 fastapi[standard]
+pymongo
+python-dotenv
+cloudinary
+python-multipart
+bcrypt
+pyjwt
