@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Form, Depends
+from fastapi import APIRouter, Form, UploadFile, File
 from db import users_collection
 from fastapi import HTTPException, status
 from pydantic import BaseModel, EmailStr
 from typing import Annotated
 from enum import Enum
-import bcrypt, jwt, os
+import bcrypt
+import jwt
+import os
 from datetime import datetime, timedelta, timezone
-from bson import ObjectId
 
 users_router = APIRouter(tags=["Users"])
 
@@ -16,6 +17,7 @@ class UserDetails(BaseModel):
     password: str
 
 class UserRole(str, Enum):
+    ADMIN = "admin"
     AGENT = "agent"
     USER = "trainee"
 
@@ -23,7 +25,7 @@ class Gender(str, Enum):
     MALE = "male"
     FEMALE = "female"
 
-PASSCODE_REQUIRED = "CGA2025"
+PASSCODE_REQUIRED = "CGATrainee2025"
 
 @users_router.post("/users/signup")
 def register_user(
@@ -31,6 +33,7 @@ def register_user(
         email: Annotated[EmailStr, Form()],
         password: Annotated[str, Form(min_length=8)],
         confirm_password: Annotated[str, Form()],
+        passcode: Annotated[str, Form()],
         role: Annotated[UserRole, Form()] = UserRole.USER):
 
     user_count = users_collection.count_documents({"email": email})
@@ -42,6 +45,10 @@ def register_user(
                             "Passwords do not match!")
 
     hash_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+
+    if user_count["role"] == "trainee":
+        if passcode != PASSCODE_REQUIRED:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Invalid or missing passcode!")
 
     user_created = {
         "username": username,
@@ -60,8 +67,7 @@ def register_user(
 @users_router.post("/users/login")
 def login_user(
     email: Annotated[EmailStr, Form()],
-    password: Annotated[str, Form(min_length=8)],
-    passcode: Annotated[str, Form]
+    password: Annotated[str, Form(min_length=8)]
 ):
     user = users_collection.find_one({"email": email})
     if not user:
@@ -70,10 +76,6 @@ def login_user(
     correct_password = bcrypt.checkpw(password.encode(), user["password"])
     if not correct_password:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong credentials!")
-
-    if user["role"] == "trainee":
-        if passcode != PASSCODE_REQUIRED:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Invalid or missing passcode!")
 
 
     encoded_jwt = jwt.encode({
@@ -88,30 +90,38 @@ def login_user(
     }
 
 
-@users_router.post("/users/register/trainee")
+@users_router.post("/forms/trainee")
 def register_trainee(
-    full_name: Annotated[str, Form()],
-    email: Annotated[EmailStr, Form()],
-    phone_number: Annotated[str, Form()],
-    emergency_contact: Annotated[str, Form()],    
-    date_of_birth: Annotated[str, Form()],
-    address: Annotated[str, Form()],
-    gender: Annotated[Gender, Form()] = Gender.MALE
+    trainee_name: Annotated[str, Form()],
+    trainee_email: Annotated[EmailStr, Form()],
+    trainee_phone_number: Annotated[str, Form()],
+    trainee_ghana_card: Annotated[UploadFile, File()],
+    trainee_birth_cert: Annotated[UploadFile, File()],
+    trainee_wassce_cert: Annotated[UploadFile, File()], 
+    parent_name: Annotated[str, Form()],
+    parent_contact: Annotated[str, Form()],    
+    parent_occupation: Annotated[str, Form()],
+    parent_ghana_card: Annotated[UploadFile, File()],
+    trainee_gender: Annotated[Gender, Form()] = Gender.MALE
 ):
-    # Check if agent already exists
-    if users_collection.find_one({"email": email}):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Email already registered!")
+    # Check if trainee already exists
+    if users_collection.find_one({"email": trainee_email}):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Trainee already registered!")
 
 
-    # Create agent document
+    # Create trainee document
     trainee = {
-        "full_name": full_name,
-        "email": email,
-        "phone number": phone_number,
-        "emergency contact": emergency_contact,
-        "gender": gender,
-        "date of birth": date_of_birth,
-        "address": address,
+        "trainee_name": trainee_name,
+        "trainee_email": trainee_email,
+        "trainee_phone_number": trainee_phone_number,
+        "trainee_ghana_card": trainee_ghana_card,
+        "trainee_birth_cert": trainee_birth_cert,
+        "trainee_gender": trainee_gender,
+        "trainee_wassce_cert": trainee_wassce_cert,
+        "parent_name": parent_name,
+        "parent_contact": parent_contact,
+        "parent_occupation": parent_occupation,
+        "parent_ghana_card":parent_ghana_card,
         "role": "trainee"
     }
 
@@ -119,15 +129,16 @@ def register_trainee(
     return {"message": "Trainee registered successfully!"}
 
 
-@users_router.post("/users/register/agent")
+@users_router.post("/forms/agent")
 def register_agent(
     full_name: Annotated[str, Form()],
     email: Annotated[EmailStr, Form()],
     phone_number: Annotated[str, Form()],
+    profession: Annotated[str, Form()],
     company: Annotated[str, Form()],
-    years_of_experience: Annotated[str, Form()],    
-    date_of_birth: Annotated[str, Form()],
-    address: Annotated[str, Form()],
+    years_of_experience: Annotated[str, Form()],
+    certificate: Annotated[UploadFile, File()],
+    ghana_card: Annotated[UploadFile, File()],
     gender: Annotated[Gender, Form()] = Gender.MALE
 ):
     # Check if agent already exists
@@ -139,11 +150,12 @@ def register_agent(
         "full_name": full_name,
         "email": email,
         "phone": phone_number,
+        "profession": profession,
         "company": company,
-        "years of experience": years_of_experience,
+        "years_of_experience": years_of_experience,
         "gender": gender,
-        "date of birth": date_of_birth,
-        "address": address,
+        "ghana_card": ghana_card,
+        "certificate": certificate,
         "role": "agent"
     }
 
