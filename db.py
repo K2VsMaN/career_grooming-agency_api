@@ -14,5 +14,7 @@ career_grooming_db = mongo_client["career_grooming_db"]
 
 
 # Pick a connection to operate on
-users_forms_collection = career_grooming_db["users_forms"]
+application_forms_collection = career_grooming_db["application_forms"]
 users_collection = career_grooming_db["users"]
+transcript_collection = career_grooming_db["transcript"]
+resources = career_grooming_db["resources"]

@@ -17,10 +17,10 @@ class UserDetails(BaseModel):
     password: str
 
 class UserRole(str, Enum):
+    ADMIN = "admin"
     AGENT = "agent"
     USER = "trainee"
 
-PASSCODE_REQUIRED = "CGATrainee2025"
 
 @users_router.post("/users/signup")
 def register_user(
@@ -42,15 +42,14 @@ def register_user(
     hash_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
 
     if role == UserRole.USER:
-        if passcode != PASSCODE_REQUIRED:
+        if passcode != os.getenv("PASSCODE_REQUIRED"):
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Invalid or missing passcode!")
 
     user_created = {
         "username": username,
         "email": email,
         "password": hash_password,
-        "role": role,
-        "passcode": passcode
+        "role": role
     }
 
     registered_user = users_collection.insert_one(user_created)
