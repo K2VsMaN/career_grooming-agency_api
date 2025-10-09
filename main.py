@@ -3,6 +3,8 @@ from routes.users import users_router
 from routes.admin import admin_router
 from routes.forms import application_form_router
 from dashboard.trainee import trainee_router
+from dashboard.agent import agent_router
+
 import cloudinary
 import os
 
@@ -25,3 +27,4 @@ app.include_router(users_router)
 app.include_router(admin_router)
 app.include_router(application_form_router)
 app.include_router(trainee_router)
+app.include_router(agent_router)
