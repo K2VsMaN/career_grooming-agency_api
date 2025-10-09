@@ -1,34 +1,34 @@
-from fastapi import APIRouter, Form, UploadFile, File
-from db import users_forms_collection
+from fastapi import APIRouter, Form, File
+from db import  application_forms_collection
 from fastapi import HTTPException, status
-from pydantic import BaseModel, EmailStr
+from pydantic import EmailStr
 from typing import Annotated
 from enum import Enum
 import cloudinary.uploader
 
-users_form_router = APIRouter(tags=["Forms"])
+application_form_router = APIRouter(tags=["Forms"])
 
 
 class Gender(str, Enum):
     MALE = "male"
     FEMALE = "female"
 
-@users_form_router.post("/forms/trainee")
+@application_form_router.post("/forms/trainee")
 def register_trainee(
     trainee_name: Annotated[str, Form()],
     trainee_email: Annotated[EmailStr, Form()],
     trainee_phone_number: Annotated[str, Form()],
     parent_name: Annotated[str, Form()],
-    parent_contact: Annotated[str, Form()],    
+    parent_contact: Annotated[str, Form()],
     parent_occupation: Annotated[str, Form()],
-    trainee_ghana_card: Annotated[bytes, File()] = None,
-    trainee_birth_cert: Annotated[bytes, File()] = None,
-    trainee_wassce_cert: Annotated[bytes, File()] = None,
-    parent_ghana_card: Annotated[bytes, File()] = None,
+    trainee_ghana_card: Annotated[bytes, File()],
+    trainee_birth_cert: Annotated[bytes, File()],
+    trainee_wassce_cert: Annotated[bytes, File()],
+    parent_ghana_card: Annotated[bytes, File()],
     trainee_gender: Annotated[Gender, Form()] = Gender.MALE
 ):
     # Check if trainee already exists
-    if users_forms_collection.find_one({"email": trainee_email}):
+    if application_forms_collection.find_one({"trainee_email": trainee_email}):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Trainee already registered!")
 
     upload_result1 = cloudinary.uploader.upload(trainee_ghana_card)
@@ -53,11 +53,11 @@ def register_trainee(
         "role": "trainee"
     }
 
-    users_forms_collection.insert_one(trainee)
+    application_forms_collection.insert_one(trainee)
     return {"message": "Trainee registered successfully!"}
 
 
-@users_form_router.post("/forms/agent")
+@application_form_router.post("/forms/agent")
 def register_agent(
     full_name: Annotated[str, Form()],
     email: Annotated[EmailStr, Form()],
@@ -65,13 +65,13 @@ def register_agent(
     profession: Annotated[str, Form()],
     company: Annotated[str, Form()],
     years_of_experience: Annotated[str, Form()],
-    certificate: Annotated[bytes, File()] = None,
-    ghana_card: Annotated[bytes, File()] = None,
+    certificate: Annotated[bytes, File()],
+    ghana_card: Annotated[bytes, File()],
     gender: Annotated[Gender, Form()] = Gender.MALE
 ):
     # Check if agent already exists
-    if users_forms_collection.find_one({"email": email}):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Email already registered!")
+    if  application_forms_collection.find_one({"email": email}):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Agent already registered!")
 
     upload_result1 = cloudinary.uploader.upload(certificate)
     upload_result2 = cloudinary.uploader.upload(ghana_card)
@@ -90,5 +90,5 @@ def register_agent(
         "role": "agent"
     }
 
-    users_forms_collection.insert_one(agent)
+    application_forms_collection.insert_one(agent)
     return {"message": "Agent registered successfully!"}
