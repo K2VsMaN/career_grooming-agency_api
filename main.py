@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from routes.users import users_router
-from routes.admin import admin_router
+from dashboard.admin import admin_router
 from routes.forms import application_form_router
 from dashboard.trainee import trainee_router
 from dashboard.agent import agent_router
