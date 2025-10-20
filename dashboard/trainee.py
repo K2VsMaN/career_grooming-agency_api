@@ -17,9 +17,10 @@ trainee_router = APIRouter(tags=["Trainee Dashboard"])
 def mark_progress(user_id: Annotated[str, Depends(is_authenticated)], resource_id, is_accessed: Annotated[bool, Form()]):
     two_valid_ids(resource_id, user_id)
 
-    existing_progress = resources.find_one({"user_id": ObjectId(user_id),
-                                            "_id": ObjectId(resource_id),
-                                            "is_accessed": is_accessed})
+    existing_progress = resources.find_one({
+        "user_id": ObjectId(user_id),
+        "_id": ObjectId(resource_id),
+        "is_accessed": is_accessed})
 
     if is_accessed:
         if existing_progress:
