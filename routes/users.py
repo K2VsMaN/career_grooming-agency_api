@@ -49,7 +49,8 @@ def register_user(
         "username": username,
         "email": email,
         "password": hash_password,
-        "role": role
+        "role": role,
+        "passcode":passcode
     }
 
     registered_user = users_collection.insert_one(user_created)

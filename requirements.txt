@@ -5,3 +5,4 @@ cloudinary
 python-multipart
 bcrypt
 pyjwt
+google-genai

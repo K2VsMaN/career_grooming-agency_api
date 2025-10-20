@@ -1,12 +1,14 @@
 from db import application_forms_collection, transcript_collection, resources
 from utils import replace_form_id, two_valid_ids, valid_id
-from fastapi import Depends, File, Form
+from fastapi import Depends, File, Form, UploadFile, HTTPException, status
 from fastapi import APIRouter
 from dependencies.authn import is_authenticated
 from dependencies.authz import has_roles
 from typing import Annotated
 from bson.objectid import ObjectId
 import cloudinary.uploader
+from utils import genai_client
+
 
 trainee_router = APIRouter(tags=["Trainee Dashboard"])
 
@@ -53,7 +55,7 @@ def get_resources(user_id: Annotated[str, Depends(is_authenticated)]):
     return {"forms": list(map(replace_form_id, all_forms))}
 
 
-@trainee_router.post("/dashboard/trainee/transcript/{user_id}", dependencies=[Depends(has_roles("trainee"))])
+@trainee_router.post("/dashboard/trainee/transcript", dependencies=[Depends(has_roles("trainee"))])
 def upload_transcript(
     user_id: Annotated[str, Depends(is_authenticated)],
     transcript: Annotated[bytes, File()]
@@ -63,3 +65,14 @@ def upload_transcript(
     transcript_collection.insert_one({
         "transcript": upload_result["secure_url"]})
     return {"message": "Transcript uploaded successfully"}
+
+
+@trainee_router.post("/genai/generate_text", dependencies=[Depends(is_authenticated)])
+def IT_course_selection_assistance(prompt: Annotated[str, Form()]):
+    response = genai_client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
+    return {
+        "content": response.text
+    }

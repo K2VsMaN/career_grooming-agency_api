@@ -1,15 +1,16 @@
 from db import users_collection, application_forms_collection
-from utils import replace_user_id, replace_form_id, valid_id, two_valid_ids
-from fastapi import HTTPException, status, Depends
+from utils import replace_user_id, replace_form_id, valid_id, two_valid_ids, serialize_mongo_data, serialize_user, serialize_form
+from fastapi import HTTPException, status, Depends, Form
 from bson.objectid import ObjectId
 from fastapi import APIRouter
 from dependencies.authn import is_authenticated
 from dependencies.authz import has_roles
 from typing import Annotated
+from utils import genai_client
 
 admin_router = APIRouter(tags=["Admin"])
 
-@admin_router.patch("/assign_agent/{agent_id}", dependencies=[Depends(has_roles("admin"))])
+@admin_router.post("/assign_agent/{agent_id}", dependencies=[Depends(has_roles("admin"))])
 def assign_trainee_to_agent(agent_id, trainee_id):
     two_valid_ids(agent_id, trainee_id)
     agent_found = users_collection.find_one({"_id": ObjectId(agent_id), "role": "agent"})
@@ -65,15 +66,20 @@ def delete_form(form_id):
 @admin_router.get("/users", dependencies=[Depends(has_roles("admin"))])
 def get_users(user_id: Annotated[str, Depends(is_authenticated)]):
     valid_id(user_id)
-    all_users = users_collection.find().to_list()
-    return {"users": list(map(replace_user_id, all_users))}
+    all_users = list(users_collection.find())
+    # serialized_users = [replace_user_id(user) for user in all_users]
+    serialized_users = serialize_mongo_data(all_users)
+
+    return {"users": serialized_users}
 
 
 @admin_router.get("/users/{user_id}", dependencies=[Depends(has_roles("admin"))])
-def get_user_by_id(user_id):
+def get_user_by_id(user_id:str):
     valid_id(user_id)
     user = users_collection.find_one({"_id": ObjectId(user_id)})
-    return {"data": replace_user_id(user)}
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
+    return {"user": serialize_user(user)}
 
 
 @admin_router.delete("/users/{user_id}", dependencies=[Depends(has_roles("admin"))])
@@ -87,3 +93,14 @@ def delete_user(user_id):
             status.HTTP_422_UNPROCESSABLE_ENTITY, "Invalid mongo id received")
 
     return {"message": f"user with id {user_id} has been deleted successfully."}
+
+
+@admin_router.put("/genai/generate_text", dependencies=[Depends(is_authenticated)])
+def Assign_trainees_to_agents_with_assistance(prompt: Annotated[str, Form()]):
+    response = genai_client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
+    return {
+        "content": response.text
+    }
