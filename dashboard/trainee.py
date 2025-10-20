@@ -1,6 +1,6 @@
 from db import application_forms_collection, transcript_collection, resources
 from utils import replace_form_id, two_valid_ids, valid_id
-from fastapi import Depends, File, Form, UploadFile, HTTPException, status
+from fastapi import Depends, File, Form
 from fastapi import APIRouter
 from dependencies.authn import is_authenticated
 from dependencies.authz import has_roles
@@ -69,10 +69,10 @@ def upload_transcript(
 
 
 @trainee_router.post("/genai/generate_text", dependencies=[Depends(is_authenticated)])
-def IT_course_selection_assistance(prompt: Annotated[str, Form()]):
+def course_selection_assistance(prompt: Annotated[str, Form()]):
     response = genai_client.models.generate_content(
         model="gemini-2.5-flash",
-        contents=prompt
+        contents=f"Based on the topic {prompt}, provide a detail to what the course is about and job availabilty in Ghana."
     )
     return {
         "content": response.text
