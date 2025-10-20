@@ -37,12 +37,6 @@ def serialize_user(user):
     user["_id"] = str(user["_id"])
     return user
 
-def serialize_form(form):
-    if not form:
-        return None
-    form["_id"] = str(form["_id"])
-    return form
-
 
 def serialize_mongo_data(data):
     if isinstance(data, list):

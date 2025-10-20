@@ -1,6 +1,6 @@
 from db import application_forms_collection, transcript_collection, resources
 from utils import replace_form_id, two_valid_ids, valid_id
-from fastapi import Depends, File, Form, UploadFile, HTTPException, status
+from fastapi import Depends, File, Form
 from fastapi import APIRouter
 from dependencies.authn import is_authenticated
 from dependencies.authz import has_roles
@@ -17,9 +17,10 @@ trainee_router = APIRouter(tags=["Trainee Dashboard"])
 def mark_progress(user_id: Annotated[str, Depends(is_authenticated)], resource_id, is_accessed: Annotated[bool, Form()]):
     two_valid_ids(resource_id, user_id)
 
-    existing_progress = resources.find_one({"user_id": ObjectId(user_id),
-                                            "_id": ObjectId(resource_id),
-                                            "is_accessed": is_accessed})
+    existing_progress = resources.find_one({
+        "user_id": ObjectId(user_id),
+        "_id": ObjectId(resource_id),
+        "is_accessed": is_accessed})
 
     if is_accessed:
         if existing_progress:
@@ -68,10 +69,10 @@ def upload_transcript(
 
 
 @trainee_router.post("/genai/generate_text", dependencies=[Depends(is_authenticated)])
-def IT_course_selection_assistance(prompt: Annotated[str, Form()]):
+def course_selection_assistance(prompt: Annotated[str, Form()]):
     response = genai_client.models.generate_content(
         model="gemini-2.5-flash",
-        contents=prompt
+        contents=f"Based on the topic {prompt}, provide a detail to what the course is about and job availabilty in Ghana."
     )
     return {
         "content": response.text
