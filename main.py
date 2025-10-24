@@ -4,7 +4,6 @@ from dashboard.admin import admin_router
 from routes.forms import application_form_router
 from dashboard.trainee import trainee_router
 from dashboard.agent import agent_router
-
 import cloudinary
 import os
 

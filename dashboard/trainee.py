@@ -1,4 +1,4 @@
-from db import application_forms_collection, transcript_collection, resources
+from db import transcript_collection, resources
 from utils import replace_form_id, two_valid_ids, valid_id
 from fastapi import Depends, File, Form
 from fastapi import APIRouter
@@ -49,11 +49,11 @@ def get_progress(resource_id, user_id: Annotated[str, Depends(is_authenticated)]
     
 
 
-@trainee_router.get("/dashboard/trainee/resources", dependencies=[Depends(has_roles("trainee"))])
+@trainee_router.get("/dashboard/trainee/resources", dependencies=[Depends(has_roles(["trainee", "admin"]))])
 def get_resources(user_id: Annotated[str, Depends(is_authenticated)]):
     valid_id(user_id)
-    all_forms = application_forms_collection.find().to_list()
-    return {"forms": list(map(replace_form_id, all_forms))}
+    resource = resources.find().to_list()
+    return {"forms": list(map(replace_form_id, resource))}
 
 
 @trainee_router.post("/dashboard/trainee/transcript", dependencies=[Depends(has_roles("trainee"))])
@@ -68,8 +68,8 @@ def upload_transcript(
     return {"message": "Transcript uploaded successfully"}
 
 
-@trainee_router.post("/genai/generate_text", dependencies=[Depends(is_authenticated)])
-def course_selection_assistance(prompt: Annotated[str, Form()]):
+@trainee_router.post("/dashboard/trainee/genai/get_advice", dependencies=[Depends(is_authenticated)])
+def course_advice(prompt: Annotated[str, Form()]):
     response = genai_client.models.generate_content(
         model="gemini-2.5-flash",
         contents=f"Based on the topic {prompt}, provide a detail to what the course is about and job availabilty in Ghana."

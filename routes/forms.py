@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Form, File
-from db import  application_forms_collection
+from db import  application_forms_collection, users_collection
 from fastapi import HTTPException, status
 from pydantic import EmailStr
 from typing import Annotated
@@ -69,7 +69,7 @@ def register_agent(
     gender: Annotated[Gender, Form()] = Gender.MALE
 ):
     # Check if agent already exists
-    if  application_forms_collection.find_one({"email": email}):
+    if application_forms_collection.find_one({"email": email}) or users_collection.find_one({"email": email}):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Agent already registered!")
 
     upload_result1 = cloudinary.uploader.upload(certificate)
