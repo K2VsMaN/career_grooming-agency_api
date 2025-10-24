@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Form
-from db import users_collection
+from db import users_collection, application_forms_collection
 from fastapi import HTTPException, status
 from pydantic import BaseModel, EmailStr
 from typing import Annotated
@@ -19,7 +19,7 @@ class UserDetails(BaseModel):
 class UserRole(str, Enum):
     ADMIN = "admin"
     AGENT = "agent"
-    USER = "trainee"
+    TRAINEE = "trainee"
 
 
 @users_router.post("/users/signup")
@@ -28,12 +28,20 @@ def register_user(
         email: Annotated[EmailStr, Form()],
         password: Annotated[str, Form(min_length=8)],
         confirm_password: Annotated[str, Form()],
-        passcode: Annotated[str, Form()] = None,
-        role: Annotated[UserRole, Form()] = UserRole.USER):
+        passcode: Annotated[str, Form()],
+        role: Annotated[UserRole, Form()] = UserRole.TRAINEE):
 
     user_count = users_collection.count_documents({"email": email})
     if user_count > 0:
         raise HTTPException(status.HTTP_409_CONFLICT, "User already exists!")
+    
+    agent_in_forms = application_forms_collection.find_one({"email": email})
+    if not agent_in_forms and role == "agent":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Agent hasn't applied")
+    
+    trainee_in_forms = application_forms_collection.find_one({"trainee_email": email})
+    if not trainee_in_forms and role == "trainee":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Trainee hasn't applied")
 
     if password != confirm_password:
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
@@ -41,8 +49,12 @@ def register_user(
 
     hash_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
 
-    if role == UserRole.USER:
-        if passcode != os.getenv("PASSCODE_REQUIRED"):
+    if role == UserRole.TRAINEE:
+        if passcode != os.getenv("TRAINEE_PASSCODE"):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Invalid or missing passcode!")
+        
+    if role == UserRole.AGENT:
+        if passcode != os.getenv("AGENT_PASSCODE"):
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Invalid or missing passcode!")
 
     user_created = {
